@@ -1,6 +1,4 @@
-# Плагин SynthFM
-
-Этот репозиторий содержит исходный код плагина SynthFM, разработанного с использованием фреймворка JUCE для создания аудио плагинов.
+# SynthFM
 
 ## Предварительные требования
 
@@ -26,5 +24,5 @@ git clone https://github.com/ainthero/SynthFM
 5. Нажмите Build.
 
 ## Запуск
-* Standalone версия не требует дополнительных действий - это отдельное приложение.
-* VST3 файл необходимо скопировать в C:\Program Files\Common Files\VST3. Плагин станет доступен в DAW.
+* Standalone версия не требует дополнительных действий - это отдельное приложение. По умолчанию собирается в SynthFM\Builds\VisualStudio2022\x64\Release\Standalone Plugin\SynthFM.exe
+* VST3 файл необходимо скопировать из SynthFM\Builds\VisualStudio2022\x64\Release\VST3\SynthFM.vst3\Contents\x86_64-win\SynthFM.vst3 в C:\Program Files\Common Files\VST3. Плагин станет доступен в DAW.
