@@ -62,12 +62,11 @@ float Oscillator::nextSample() {
         sample = 2.0 * std::asin(std::sin(phase)) / juce::MathConstants<float>::pi;
         break;
     case Saw:
-        // Generate sawtooth wave from -1 to 1
         sample = 2.0 * (phase / juce::MathConstants<float>::twoPi) - 1.0;
         break;
     }
     float filteredSample = sample - lastSample + 0.995 * lastSample;
-    lastSample = filteredSample; // Remember to update lastSample for the next call
+    lastSample = filteredSample;
 
     phase += phaseIncrement;
     if (phase >= juce::MathConstants<float>::twoPi)
@@ -98,7 +97,6 @@ void Oscillator::noteOff() {
     adsr.noteOff();
 }
 
-// ADSR control methods
 void Oscillator::setAttackTime(float time) {
     adsr.setAttackTime(time);
 }

@@ -9,7 +9,7 @@
 */
 
 #pragma once
-#include <algorithm> // Äëÿ std::max è std::min
+#include <algorithm>
 
 class ADSR {
 public:

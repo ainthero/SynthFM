@@ -31,31 +31,38 @@ bool ModulationMatrix::removeModulation(int modulatorIdx, int carrierIdx) {
 }
 
 float ModulationMatrix::process() {
+    // Получаем порядок обработки осцилляторов с помощью топологической сортировки
     std::vector<int> order = topologicalSort();
     std::vector<float> outputs(4, 0.0);
     std::vector<float> originalFrequencies(4);
-
+    // Сохраняем исходные частоты каждого осциллятора
     for (int i = 0; i < 4; ++i) {
         originalFrequencies[i] = oscillators[i]->getFrequency();
     }
-
+    // Обходим осцилляторы в порядке, определенном топологической сортировкой
     for (int modulatorIdx : order) {
+        // Получаем следующий сэмпл от текущего осциллятора (модулятора)
         outputs[modulatorIdx] = oscillators[modulatorIdx]->nextSample();
+        // Проходим по всем возможным осцилляторам-носителям
         for (int carrierIdx = 0; carrierIdx < 4; ++carrierIdx) {
+            // Проверяем, существует ли связь модуляции между текущими осцилляторами
             if (connections[modulatorIdx][carrierIdx]) {
                 float modulationEffect = outputs[modulatorIdx] * modulationDepths[modulatorIdx][carrierIdx];
+                // Применяем модуляцию, изменяя частоту осциллятора-носителя
                 oscillators[carrierIdx]->setFrequency(oscillators[carrierIdx]->getFrequency() + modulationEffect);
             }
         }
     }
-
+    // Вычисляем итоговый результат, суммируя выходные значения, умноженные на уровень каждого осциллятора
     float res = 0.0;
     for (int idx = 0; idx < 4; ++idx) {
         res += outputs[idx] * oscillators[idx]->getLevel();
-        oscillators[idx]->setFrequency(originalFrequencies[idx]); // Âîññòàíàâëèâàåì èñõîäíûå ÷àñòîòû
+        // Восстанавливаем исходные частоты осцилляторов после обработки
+        oscillators[idx]->setFrequency(originalFrequencies[idx]);
     }
     return res * level;
 }
+
 
 
 void ModulationMatrix::setLevel(float newLevel) {

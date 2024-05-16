@@ -11,29 +11,22 @@
 #include "FxBlock.h"
 
 void Overdrive::processBlock(juce::AudioBuffer<float>& buffer) {
-    // Update the filter settings before processing.
     updateFilter();
-
-    // Assume mono processing - process only the first channel
     float* channelData = buffer.getWritePointer(0);
     for (int i = 0; i < buffer.getNumSamples(); ++i) {
-        // Apply distortion to the signal
         channelData[i] = std::tanh(channelData[i] * drive * 100);
     }
 
-    // Process the first channel through the low-pass filter
     filter.processSamples(channelData, buffer.getNumSamples());
 
-    // If there are more channels, copy the processed mono signal to all other channels
     for (int channel = 1; channel < buffer.getNumChannels(); ++channel) {
         std::copy(channelData, channelData + buffer.getNumSamples(), buffer.getWritePointer(channel));
     }
 }
 
 void Overdrive::updateFilter() {
-    // Расчет частоты среза от минимальной до максимальной в зависимости от tone
-    float maxCutoff = 5000.0f; // Максимальная частота среза
-    float minCutoff = 500.0f;  // Минимальная частота среза
+    float maxCutoff = 5000.0f;
+    float minCutoff = 500.0f;
     float cutoff = minCutoff + (maxCutoff - minCutoff) * tone;
     filter.setCoefficients(juce::IIRCoefficients::makeLowPass(48000.0, cutoff));
 }
@@ -52,24 +45,19 @@ void Reverb::processBlock(juce::AudioBuffer<float>& buffer) {
 
 void Delay::processBlock(juce::AudioBuffer<float>& buffer) {
     int delaySamples = static_cast<int>(48000.0 * time);
-    float feedbackGain = std::min(feedback, 0.95f); // Ограничиваем feedback для предотвращения нестабильности
+    float feedbackGain = std::min(feedback, 0.95f);
 
-    // Принимаем, что обрабатываем только первый канал для моно-обработки
     float* channelData0 = buffer.getWritePointer(0);
     float* channelData1 = buffer.getWritePointer(1);
 
     for (int i = 0; i < buffer.getNumSamples(); ++i) {
-        // Получаем отложенный образец из буфера задержки
         float delayedSample = delayBuffer[delayBufferPos];
 
-        // Обновляем буфер задержки с учётом feedback
         delayBuffer[delayBufferPos] = channelData0[i] + delayedSample * feedbackGain;
 
-        // Смешиваем отложенный образец с исходным сигналом
-        channelData0[i] = channelData0[i] * 0.5 + delayedSample * 0.5;  // Простое смешивание сигналов
+        channelData0[i] = channelData0[i] * 0.5 + delayedSample * 0.5;
         channelData1[i] = channelData0[i];
 
-        // Перемещаем указатель в буфере задержки
         delayBufferPos = (delayBufferPos + 1) % delaySamples;
     }
 }
@@ -77,39 +65,32 @@ void Delay::processBlock(juce::AudioBuffer<float>& buffer) {
 
 void Flanger::processBlock(juce::AudioBuffer<float>& buffer) {
     int numSamples = buffer.getNumSamples();
-    float sampleRate = 48000.0; // Убедитесь, что это значение установлено правильно.
-    float depthInSamples = depth * sampleRate / 1000.0; // глубина в сэмплах
+    float sampleRate = 48000.0;
+    float depthInSamples = depth * sampleRate / 1000.0;
 
-    // Проверяем размер буфера задержки и ресайзим при необходимости
-    int maxDelaySamples = static_cast<int>(depthInSamples); // +2 для безопасного интерполяционного маржина
+    int maxDelaySamples = static_cast<int>(depthInSamples);
     if (delayBuffer.size() < maxDelaySamples) {
         delayBuffer.resize(maxDelaySamples, 0.0);
     }
     auto* channelData = buffer.getWritePointer(0);
-    // Проходим по каждому сэмплу буфера
     for (int i = 0; i < numSamples; ++i) {
         float modulatedDelay = depthInSamples * (0.5f + 0.4f * std::sin(phase));
         int intDelay = static_cast<int>(modulatedDelay);
         float fracDelay = modulatedDelay - intDelay;
             
-        // Инкремент фазы LFO
         phase += rate * juce::MathConstants<float>::twoPi / sampleRate;
         if (phase >= juce::MathConstants<float>::twoPi)
             phase -= juce::MathConstants<float>::twoPi;
 
             float currentSample = channelData[i];
 
-            // Циклическое считывание из буфера задержки
             int readPos = (delayBufferPos - intDelay + maxDelaySamples) % maxDelaySamples;
             float delayedSample1 = delayBuffer[readPos];
 
-            // Смешиваем исходный сигнал с задержанным
             channelData[i] = currentSample * 0.7 + delayedSample1 * 0.3;
 
-            // Записываем текущий сэмпл в буфер задержки
             delayBuffer[delayBufferPos] = currentSample;
 
-        // Обновляем позицию записи в буфере задержки
         delayBufferPos = (delayBufferPos + 1) % maxDelaySamples;
     }
     for (int channel = 1; channel < buffer.getNumChannels(); ++channel) {
@@ -121,15 +102,13 @@ void Flanger::processBlock(juce::AudioBuffer<float>& buffer) {
 
 void Chorus::processBlock(juce::AudioBuffer<float>& buffer) {
     int numSamples = buffer.getNumSamples();
-    float sampleRate = 48000.0;  // Предполагаемая частота дискретизации
+    float sampleRate = 48000.0;
 
-    // Обработка только первого канала для упрощения
     auto* channelData = buffer.getWritePointer(0);
 
     for (int i = 0; i < numSamples; ++i) {
-        // Небольшая модуляция питча для каждой копии
-        float pitchModulation1 = 1.0 + 0.001 * std::sin(phase + 0.5); // Слегка изменяем питч первой копии
-        float pitchModulation2 = 1.0 + 0.001 * std::sin(phase - 0.5); // Слегка изменяем питч второй копии
+        float pitchModulation1 = 1.0 + 0.001 * std::sin(phase + 0.5);
+        float pitchModulation2 = 1.0 + 0.001 * std::sin(phase - 0.5);
 
         float modulatedDelay1 = 20 + depth * sampleRate * (0.5f + 0.4f * std::sin(phase)) / 1000 * pitchModulation1;
         int intDelay1 = static_cast<int>(modulatedDelay1);
@@ -139,12 +118,10 @@ void Chorus::processBlock(juce::AudioBuffer<float>& buffer) {
         int intDelay2 = static_cast<int>(modulatedDelay2);
         float fracDelay2 = modulatedDelay2 - intDelay2;
 
-        // Инкремент фазы LFO
         phase += rate * juce::MathConstants<float>::twoPi / sampleRate;
         if (phase >= juce::MathConstants<float>::twoPi)
             phase -= juce::MathConstants<float>::twoPi;
 
-        // Интерполяция задержанного сэмпла для обеих копий
         int readPos1 = (delayBufferPos - intDelay1 + delayBuffer.size()) % delayBuffer.size();
         float delayedSample1_1 = delayBuffer[readPos1];
         float delayedSample1_2 = delayBuffer[(readPos1 + 1) % delayBuffer.size()];
@@ -155,13 +132,10 @@ void Chorus::processBlock(juce::AudioBuffer<float>& buffer) {
         float delayedSample2_2 = delayBuffer[(readPos2 + 1) % delayBuffer.size()];
         float interpolatedSample2 = delayedSample2_1 + fracDelay2 * (delayedSample2_2 - delayedSample2_1);
 
-        // Смешивание сухого сигнала с обеими задержанными копиями
         channelData[i] = channelData[i] * 0.3 + interpolatedSample1 * 0.3 + interpolatedSample2 * 0.4;
 
-        // Запись текущего сэмпла в буфер задержки
         delayBuffer[delayBufferPos] = channelData[i];
 
-        // Обновление позиции записи в буфере задержки
         delayBufferPos = (delayBufferPos + 1) % delayBuffer.size();
     }
     for (int channel = 1; channel < buffer.getNumChannels(); ++channel) {
@@ -175,7 +149,6 @@ void Filter::updateFilter() {
     auto highPassCoeffs = juce::IIRCoefficients::makeHighPass(48000.0, 21000 * lowCut, resonance);
     highPassFilter.setCoefficients(highPassCoeffs);
 
-    // Update low-pass filter with the current lowCut frequency
     auto lowPassCoeffs = juce::IIRCoefficients::makeLowPass(48000.0, 21000 * highCut, resonance);
     lowPassFilter.setCoefficients(lowPassCoeffs);
 }
@@ -186,7 +159,6 @@ void Filter::processBlock(juce::AudioBuffer<float>& buffer) {
     highPassFilter.processSamples(channelData, buffer.getNumSamples());
     lowPassFilter.processSamples(channelData, buffer.getNumSamples());
 
-    // If there are more channels, copy the processed mono signal to all other channels
     for (int channel = 1; channel < buffer.getNumChannels(); ++channel) {
         std::copy(channelData, channelData + buffer.getNumSamples(), buffer.getWritePointer(channel));
     }
@@ -255,19 +227,19 @@ FxBlockComponent::FxBlockComponent() {
 
     param1Slider.onValueChange = [this] {
         if (auto* list = findParentComponentOfClass<FxList>()) {
-            list->setEffect1(indexInList, param1Slider.getValue());  // Предполагается, что indexInList устанавливается, когда компонент обновляется
+            list->setEffect1(indexInList, param1Slider.getValue());
         }
         };
 
     param2Slider.onValueChange = [this] {
         if (auto* list = findParentComponentOfClass<FxList>()) {
-            list->setEffect2(indexInList, param2Slider.getValue());  // Предполагается, что indexInList устанавливается, когда компонент обновляется
+            list->setEffect2(indexInList, param2Slider.getValue());
         }
         };
 
     enableButton.onClick = [this] {
         if (auto* list = findParentComponentOfClass<FxList>()) {
-            list->toggleEffectEnabled(indexInList);  // Предполагается, что indexInList устанавливается, когда компонент обновляется
+            list->toggleEffectEnabled(indexInList);
         }
         };
 
@@ -288,27 +260,22 @@ void FxBlockComponent::resized() {
     int width = getWidth();
     int height = getHeight();
 
-    // Set the bounds for the nameLabel at the top.
     nameLabel.setBounds(10, 10, width - 20, 20);
 
-    // Set the bounds for the buttons.
     enableButton.setBounds(10, 40, 70, 20);
     upButton.setBounds(90, 20, 70, 20);
     downButton.setBounds(90, 40, 70, 20);
 
-    // Calculate the starting position and dimensions for sliders and labels.
     int sliderWidth = 70;
     int labelHeight = 20;
-    int sliderHeight = 70; // Adjusted height for slider to fit label below
+    int sliderHeight = 70;
 
-    // Set the bounds for the first parameter slider and label.
-    int param1X = 250; // X position for the first parameter
+    int param1X = 250;
     param1Label.setBounds(param1X - 55, 20, sliderWidth, labelHeight);
     param1Slider.setBounds(param1X, 0, sliderWidth, sliderHeight);
     param1Slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 40, 15);
 
-    // Set the bounds for the second parameter slider and label.
-    int param2X = param1X + sliderWidth + 150; // X position for the second parameter
+    int param2X = param1X + sliderWidth + 150;
     param2Label.setBounds(param2X - 55, 20, sliderWidth, labelHeight);
     param2Slider.setBounds(param2X, 0, sliderWidth, sliderHeight);
     param2Slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 40, 15);
@@ -320,10 +287,10 @@ void FxBlockComponent::setFxBlock(const FxBlock& fxBlock) {
     enableButton.setToggleState(fxBlock.isActive, juce::dontSendNotification);
     auto it = fxBlock.parameters.begin();
 
-    param1Slider.setValue(it->second);  // Пример: первый параметр
+    param1Slider.setValue(it->second);
     param1Slider.setName(it->first);
     param1Slider.setSliderStyle(juce::Slider::SliderStyle::RotaryVerticalDrag);
-    param1Slider.setRange(0.01, 1.0, 0.01); // Диапазон от 0 до 1
+    param1Slider.setRange(0.01, 1.0, 0.01);
     param1Slider.setNumDecimalPlacesToDisplay(2);
     param1Slider.setTextValueSuffix("");
     param1Label.setText(it->first, juce::dontSendNotification);
@@ -332,7 +299,7 @@ void FxBlockComponent::setFxBlock(const FxBlock& fxBlock) {
         param2Slider.setValue(it->second);
         param2Slider.setName(it->first);
         param2Slider.setSliderStyle(juce::Slider::SliderStyle::RotaryVerticalDrag);
-        param2Slider.setRange(0.01, 1.0, 0.01); // Диапазон от 0 до 1
+        param2Slider.setRange(0.01, 1.0, 0.01);
         param2Slider.setNumDecimalPlacesToDisplay(2);
         param2Slider.setTextValueSuffix("");
         param2Label.setText(it->first, juce::dontSendNotification);
@@ -366,16 +333,14 @@ int FxList::getNumRows() {
 
 void FxList::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) {
     if (rowNumber < 0 || rowNumber >= effects.size()) {
-        return; // Прерываем выполнение, если индекс выходит за границы
+        return;
     }
-    if (rowIsSelected) {  // Условие для выделения
+    if (rowIsSelected) {
         g.fillAll(juce::Colours::lightblue);
     }
 
     g.setColour(juce::Colours::black);
-    //g.drawText(effects[rowNumber].name, 0, 0, width, height, juce::Justification::centredLeft, true);
 
-    // Рисуем линию-разделитель внизу
     g.setColour(juce::Colours::grey);
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
     g.drawLine(0, height - 1, width, height - 1);
@@ -392,7 +357,7 @@ juce::Component* FxList::refreshComponentForRow(int rowNumber, bool isRowSelecte
         component = new FxBlockComponent();
 
     component->setFxBlock(effects[rowNumber]);
-    component->indexInList = rowNumber;  // Убедитесь, что эта переменная есть в FxBlockComponent
+    component->indexInList = rowNumber;
     return component;
 }
 

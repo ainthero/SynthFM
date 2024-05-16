@@ -41,12 +41,12 @@ class Delay {
 public:
     float time;
     float feedback;
-    std::vector<float> delayBuffer;  // Буфер задержки для моно сигнала
+    std::vector<float> delayBuffer;
     int delayBufferPos;
 
     Delay(float time = 0.5f, float feedback = 0.5f)
         : time(time), feedback(feedback), delayBufferPos(0) {
-        delayBuffer.resize(48000.0);  // Достаточно для 1 секунды задержки в моно
+        delayBuffer.resize(48000.0);
     }
 
     void processBlock(juce::AudioBuffer<float>& buffer);
@@ -54,13 +54,13 @@ public:
 
 class Flanger {
 public:
-    float rate;  // Частота LFO в Гц
-    float depth;  // Максимальная глубина задержки в миллисекундах
-    float sampleRate;  // Частота дискретизации аудио
-    float phase;  // Текущая фаза LFO
+    float rate;
+    float depth;
+    float sampleRate;
+    float phase;
 
-    std::vector<float> delayBuffer;  // Буфер задержки
-    int delayBufferPos;  // Текущая позиция записи в буфере задержки
+    std::vector<float> delayBuffer;
+    int delayBufferPos;
 
     Flanger(float sr = 48000.0, float rate = 0.25f, float depth = 0.5f)
         : rate(rate * 5), depth(depth * 15), sampleRate(sr), phase(0.0f), delayBufferPos(0) {
@@ -73,12 +73,12 @@ public:
 
 class Chorus {
 public:
-    float rate;        // Скорость LFO (низкочастотного осциллятора)
-    float depth;       // Глубина модуляции
-    std::vector<float> delayBuffer;  // Буфер для задержанных сэмплов
-    int delayBufferPos;  // Текущая позиция в буфере задержки
-    float phase;         // Текущая фаза LFO
-    float sampleRate;    // Частота дискретизации аудио потока
+    float rate; 
+    float depth;
+    std::vector<float> delayBuffer;
+    int delayBufferPos;
+    float phase;
+    float sampleRate;
 
     Chorus(float rate = 0.25f, float depth = 0.5f, float sampleRate = 48000.0f)
         : rate(rate), depth(15 * depth), sampleRate(sampleRate), delayBufferPos(0), phase(0) {
